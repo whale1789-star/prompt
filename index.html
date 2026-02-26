@@ -3,97 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>課堂評分系統 - 專業版</title>
+    <title>課堂加扣分系統</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
-        :root { --primary: #6200ee; --success: #28a745; --danger: #dc3545; --warning: #ff9800; }
+        :root { --primary: #6200ee; --success: #28a745; --danger: #dc3545; }
         body { font-family: -apple-system, sans-serif; background-color: #f8f9fa; margin: 0; padding: 10px; }
         .container { max-width: 600px; margin: auto; }
+        .hidden { display: none !important; }
 
+        /* 老師選擇介面 */
+        #loginSection { text-align: center; padding: 50px 20px; }
+        .teacher-btn { width: 100%; padding: 25px; margin: 15px 0; font-size: 1.5em; border-radius: 15px; border: none; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); cursor: pointer; }
+        .teacher-btn:active { transform: scale(0.98); }
+
+        /* 管理區域 */
         #adminSection { background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .class-badge { display: inline-block; padding: 10px 15px; background: #e0e0e0; margin: 5px; border-radius: 20px; cursor: pointer; font-weight: bold; }
-        .class-badge:hover { background: var(--primary); color: white; }
-
-        .student-list { display: flex; flex-direction: column; gap: 10px; }
-        .student-row { display: flex; align-items: center; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        /* 評分區域：大字大按鈕 */
+        .student-row { display: flex; align-items: center; background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .student-info { flex: 1; }
-        .student-name { font-size: 1.4em; font-weight: bold; display: block; }
-        .student-id { font-size: 0.8em; color: #888; }
+        .student-name { font-size: 1.4em; font-weight: bold; }
         .score-box { font-size: 2em; font-weight: bold; color: var(--primary); min-width: 60px; text-align: center; }
+        .btn-ctrl { width: 60px; height: 60px; font-size: 1.8em; border: none; border-radius: 50%; color: white; margin-left: 10px; display: flex; align-items: center; justify-content: center; }
         
-        .btn-ctrl { width: 60px; height: 60px; font-size: 1.8em; border: none; border-radius: 50%; color: white; cursor: pointer; margin-left: 10px; display: flex; align-items: center; justify-content: center; }
-        .btn-plus { background-color: var(--success); }
-        .btn-minus { background-color: var(--danger); }
-        
-        /* 刪除專用樣式 */
-        .danger-zone { margin-top: 30px; border-top: 2px dashed #eee; padding-top: 20px; }
-        .btn-delete { background: none; color: #aaa; border: 1px solid #ddd; padding: 5px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; }
-        .btn-delete:hover { background: var(--danger); color: white; border-color: var(--danger); }
-
-        .hidden { display: none !important; }
-        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px; }
-        .btn-back { background: #eee; border: none; padding: 5px 10px; border-radius: 5px; }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="adminSection">
-        <h3>🏫 選擇班級</h3>
-        <div id="classList">正在讀取已匯入班級...</div>
+    <div id="loginSection">
+        <h2 style="margin-bottom: 30px;">請選擇您的姓名</h2>
+        <button class="teacher-btn" onclick="teacherLogin('謝小布', '0980835')">謝小布 老師</button>
+        <button class="teacher-btn" onclick="teacherLogin('李逸菁', '0910813')">李逸菁 老師</button>
+    </div>
+
+    <div id="adminSection" class="hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 id="welcomeMsg">老師您好</h3>
+            <button onclick="location.reload()" style="background:none; border:none; color:blue;">切換老師</button>
+        </div>
+        <p>您的班級：</p>
+        <div id="classList">讀取中...</div>
         
         <hr style="margin: 20px 0;">
+        <h4>➕ 建立/匯入新班級</h4>
+        <input type="text" id="classIdInput" placeholder="新班級名稱 (如: 101)" style="width:100%;">
+        <input type="file" id="csvFileInput" accept=".csv" style="margin-top:10px; width:100%;">
+        <button onclick="handleImport()" style="margin-top:10px; width:100%; background: #333; color:white; padding:12px; border-radius:8px; font-weight:bold;">執行匯入</button>
         
-        <h4>➕ 匯入新班級</h4>
-        <input type="text" id="classIdInput" placeholder="新班級名稱 (如: 101)">
-        <input type="file" id="csvFileInput" accept=".csv" style="margin-top:10px; width: 100%;">
-        <button onclick="handleImport()" style="margin-top:10px; width:100%; background: #333; color:white; padding:12px; border-radius:8px; font-weight: bold;">執行首次匯入</button>
-
-        <div class="danger-zone">
-            <p style="color:#888; font-size:12px;">※ 如需刪除班級，請點擊下方按鈕</p>
-            <button class="btn-delete" onclick="deleteClassPrompt()">🔥 清除特定班級資料</button>
-        </div>
+        <button class="teacher-btn" style="font-size:12px; padding:10px; color:red; margin-top:30px;" onclick="deleteClassPrompt()">🔥 清除特定班級</button>
     </div>
 
     <div id="scoreSection" class="hidden">
-        <div class="top-bar">
-            <button class="btn-back" onclick="location.reload()">⬅ 返回</button>
-            <h3 id="currentClassName">班級名稱</h3>
-            <button class="btn-back" onclick="exportToExcel()" style="background:#007bff; color:white;">匯出</button>
+        <div style="display:flex; justify-content:space-between; padding:10px;">
+            <button onclick="showAdmin()" style="border:none; padding:8px;">⬅ 返回</button>
+            <h3 id="currentClassName">班級</h3>
+            <button onclick="exportToExcel()" style="background:#007bff; color:white; border:none; border-radius:5px; padding:5px 10px;">匯出</button>
         </div>
-        <input type="text" id="searchInput" placeholder="🔍 搜尋學生姓名..." oninput="renderStudents()" style="width:100%; padding:15px; border-radius:10px; border:1px solid #ddd; margin-bottom:15px; font-size:16px; box-sizing: border-box;">
-        <div id="studentListArea" class="student-list"></div>
+        <input type="text" id="searchInput" placeholder="🔍 搜尋學生姓名..." oninput="renderStudents()" style="width:100%; margin-bottom:15px;">
+        <div id="studentListArea"></div>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, doc, updateDoc, increment, addDoc, serverTimestamp, onSnapshot, getDocs, writeBatch, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, updateDoc, increment, addDoc, serverTimestamp, onSnapshot, getDocs, writeBatch, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+    // --- Firebase 配置 (請替換為您的密鑰) ---
     const firebaseConfig = {
-        apiKey: "AIzaSyCTUNT7oU2kNhqaF1qSuXjpQVrGJL3BXsc",
-        authDomain: "score-a4e5b.firebaseapp.com",
-        projectId: "score-a4e5b",
-        storageBucket: "score-a4e5b.firebasestorage.app",
-        messagingSenderId: "158303926526",
-        appId: "1:158303926526:web:2485978b314a5536210daf"
-
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "...",
+        appId: "..."
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     let allStudents = [];
     let currentClassId = "";
+    let currentTeacher = "";
 
-    // 初始載入班級列表
-    async function fetchClasses() {
+    // 老師登入邏輯
+    window.teacherLogin = async (name, cardNo) => {
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+        const correctPassword = cardNo + dateStr;
+        
+        const inputPass = prompt(`您好 ${name} 老師，請輸入登入密碼 (卡號+日期)：`);
+        
+        if (inputPass === correctPassword) {
+            currentTeacher = name;
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('adminSection').classList.remove('hidden');
+            document.getElementById('welcomeMsg').innerText = `${name} 老師，您好`;
+            fetchTeacherClasses();
+        } else {
+            alert("密碼錯誤！格式應為：卡號 + YYYYMMDD");
+        }
+    };
+
+    // 讀取該老師專屬班級
+    async function fetchTeacherClasses() {
         const classListDiv = document.getElementById('classList');
-        const querySnapshot = await getDocs(collection(db, "classes"));
+        const q = query(collection(db, "classes"), where("teacherId", "==", currentTeacher));
+        const querySnapshot = await getDocs(q);
+        
         if (querySnapshot.empty) {
-            classListDiv.innerHTML = "尚未有任何班級。";
+            classListDiv.innerHTML = "尚未建立班級。";
             return;
         }
         classListDiv.innerHTML = "";
@@ -105,53 +128,35 @@
             classListDiv.appendChild(badge);
         });
     }
-    fetchClasses();
 
-    // 刪除班級邏輯
-    window.deleteClassPrompt = async () => {
-        const targetClass = prompt("請輸入欲刪除的班級名稱：");
-        if (!targetClass) return;
+    // 匯入新班級 (綁定老師 ID)
+    window.handleImport = () => {
+        const classId = document.getElementById('classIdInput').value.trim();
+        const fileInput = document.getElementById('csvFileInput');
+        if (!classId || !fileInput.files[0]) return alert("請填寫班級名稱並選擇檔案");
 
-        // 生成當天年月日 8 碼密碼
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const todayPassword = `${yyyy}${mm}${dd}`;
-
-        const password = prompt(`確定刪除「${targetClass}」嗎？\n資料刪除後無法復原。\n請輸入密碼 (當天年月日共8碼)：`);
-        
-        if (password === todayPassword) {
-            if (confirm(`警告：即將刪除 ${targetClass} 的所有學生與分數！`)) {
-                await executeDelete(targetClass);
+        Papa.parse(fileInput.files[0], {
+            header: true,
+            complete: async (results) => {
+                const batch = writeBatch(db);
+                // 關鍵：將此班級標記為該老師所有
+                batch.set(doc(db, "classes", classId), { 
+                    teacherId: currentTeacher, 
+                    createdAt: serverTimestamp() 
+                });
+                results.data.forEach(s => {
+                    if(!s.id || !s.name) return;
+                    const ref = doc(db, "classes", classId, "students", s.id);
+                    batch.set(ref, { id: s.id, name: s.name, totalScore: 0 });
+                });
+                await batch.commit();
+                alert("匯入成功！");
+                fetchTeacherClasses();
             }
-        } else {
-            alert("密碼錯誤，刪除操作已取消。");
-        }
+        });
     };
 
-    async function executeDelete(classId) {
-        try {
-            const batch = writeBatch(db);
-            
-            // 1. 刪除該班級下的所有學生
-            const studentSnapshot = await getDocs(collection(db, "classes", classId, "students"));
-            studentSnapshot.forEach((sDoc) => {
-                batch.delete(doc(db, "classes", classId, "students", sDoc.id));
-            });
-
-            // 2. 刪除班級主文件
-            batch.delete(doc(db, "classes", classId));
-
-            await batch.commit();
-            alert("班級資料已成功清除！");
-            location.reload();
-        } catch (e) {
-            console.error(e);
-            alert("刪除失敗，請確認該班級是否存在。");
-        }
-    }
-
+    // 進入班級評分
     window.loadClass = (classId) => {
         currentClassId = classId;
         document.getElementById('adminSection').classList.add('hidden');
@@ -163,6 +168,11 @@
         });
     };
 
+    window.showAdmin = () => {
+        document.getElementById('scoreSection').classList.add('hidden');
+        document.getElementById('adminSection').classList.remove('hidden');
+    };
+
     window.renderStudents = () => {
         const term = document.getElementById('searchInput').value.toLowerCase();
         const area = document.getElementById('studentListArea');
@@ -171,12 +181,12 @@
             .map(s => `
                 <div class="student-row">
                     <div class="student-info">
-                        <span class="student-name">${s.name}</span>
-                        <span class="student-id">${s.id}</span>
+                        <span class="student-name">${s.name}</span><br>
+                        <small style="color:#888">${s.id}</small>
                     </div>
                     <div class="score-box">${s.totalScore}</div>
-                    <button class="btn-ctrl btn-minus" onclick="changeScore('${s.id}', '${s.name}', -1)">−</button>
-                    <button class="btn-ctrl btn-plus" onclick="changeScore('${s.id}', '${s.name}', 1)">+</button>
+                    <button class="btn-ctrl" style="background:#dc3545;" onclick="changeScore('${s.id}', '${s.name}', -1)">−</button>
+                    <button class="btn-ctrl" style="background:#28a745;" onclick="changeScore('${s.id}', '${s.name}', 1)">+</button>
                 </div>
             `).join('');
     };
@@ -185,37 +195,33 @@
         const sRef = doc(db, "classes", currentClassId, "students", sid);
         await updateDoc(sRef, { totalScore: increment(val) });
         await addDoc(collection(db, "scoreLogs"), {
-            classId: currentClassId, studentId: sid, studentName: sname, change: val, timestamp: serverTimestamp()
+            classId: currentClassId, teacherId: currentTeacher, studentName: sname, change: val, timestamp: serverTimestamp()
         });
-    };
-
-    window.handleImport = () => {
-        const classId = document.getElementById('classIdInput').value.trim();
-        const fileInput = document.getElementById('csvFileInput');
-        if (!classId || !fileInput.files[0]) return alert("請輸入班級名稱並選擇 CSV");
-
-        Papa.parse(fileInput.files[0], {
-            header: true,
-            complete: async (results) => {
-                const batch = writeBatch(db);
-                batch.set(doc(db, "classes", classId), { createdAt: serverTimestamp() });
-                results.data.forEach(s => {
-                    if(!s.id || !s.name) return;
-                    const ref = doc(db, "classes", classId, "students", s.id);
-                    batch.set(ref, { id: s.id, name: s.name, totalScore: 0 });
-                });
-                await batch.commit();
-                alert("匯入成功！");
-                location.reload();
-            }
-        });
+        if (navigator.vibrate) navigator.vibrate(40);
     };
 
     window.exportToExcel = () => {
         const ws = XLSX.utils.json_to_sheet(allStudents);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "成績單");
-        XLSX.writeFile(wb, `${currentClassId}_成績結算.xlsx`);
+        XLSX.writeFile(wb, `${currentClassId}_${currentTeacher}_成績.xlsx`);
+    };
+
+    // 刪除邏輯 (同樣需要密碼)
+    window.deleteClassPrompt = async () => {
+        const target = prompt("請輸入要刪除的班級名稱：");
+        if(!target) return;
+        const now = new Date();
+        const pwd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+        if(prompt("請輸入刪除密碼：") === pwd) {
+            const batch = writeBatch(db);
+            const snaps = await getDocs(collection(db, "classes", target, "students"));
+            snaps.forEach(d => batch.delete(d.ref));
+            batch.delete(doc(db, "classes", target));
+            await batch.commit();
+            alert("已刪除");
+            fetchTeacherClasses();
+        }
     };
 </script>
 </body>
