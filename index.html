@@ -3,56 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課堂加分系統 v1.0</title>
+    <title>課堂評分系統 - 快速操作版</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 20px; background-color: #f0f2f5; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 15px; background-color: #f5f7f9; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         
-        /* 網格佈局 */
-        .student-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
-        .student-card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; text-align: center; background: #fff; transition: transform 0.1s; }
-        .student-card:active { transform: scale(0.95); }
+        .header-box { background: #fff; padding: 15px; border-bottom: 2px solid #eee; margin-bottom: 20px; }
+        .input-group { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
         
-        /* 按鈕樣式 */
-        .btn-group { display: flex; justify-content: space-around; margin-top: 10px; }
-        button { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .btn-plus { background-color: #28a745; color: white; }
-        .btn-minus { background-color: #dc3545; color: white; }
-        .btn-export { background-color: #007bff; color: white; }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; flex: 1; min-width: 150px; font-size: 16px; }
+        button { padding: 12px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; }
         
-        /* 歷史紀錄 */
-        .logs-section { margin-top: 30px; background: #f8f9fa; padding: 15px; border-radius: 8px; }
-        #logList { list-style: none; padding: 0; font-size: 0.9em; }
-        #logList li { padding: 5px 0; border-bottom: 1px solid #eee; }
-        .log-plus { color: green; }
-        .log-minus { color: red; }
+        .btn-load { background-color: #6200ee; color: white; } /* 進入班級 */
+        .btn-import { background-color: #03dac6; color: #000; } /* 匯入名單 */
+        .btn-export { background-color: #018786; color: white; }
+        
+        .student-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+        .student-card { border: 1px solid #eee; border-radius: 12px; padding: 15px; text-align: center; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        .score-display { font-size: 1.8em; font-weight: bold; color: #6200ee; margin: 10px 0; }
+        .btn-group { display: flex; gap: 10px; justify-content: center; }
+        .btn-plus { background-color: #4caf50; color: white; flex: 1; font-size: 1.2em; }
+        .btn-minus { background-color: #f44336; color: white; flex: 1; font-size: 1.2em; }
+
+        .logs-section { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
+        #logList li { list-style: none; padding: 8px; border-bottom: 1px solid #f9f9f9; font-size: 0.9em; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>課堂加分管理系統</h2>
-    
-    <div class="header">
-        <input type="text" id="classIdInput" placeholder="班級代碼 (如: class01)">
-        <input type="file" id="csvFileInput" accept=".csv">
-        <button onclick="handleImport()">批次匯入 CSV</button>
-        <button class="btn-export" onclick="exportToExcel()">匯出分數明細</button>
+    <div class="header-box">
+        <h3>🏫 課堂管理中心</h3>
+        <div class="input-group">
+            <input type="text" id="classIdInput" placeholder="請輸入班級 ID (如: ClassA)">
+            <button class="btn-load" onclick="loadClass()">進入班級</button>
+        </div>
+        <div class="input-group">
+            <input type="file" id="csvFileInput" accept=".csv" style="font-size: 12px;">
+            <button class="btn-import" onclick="handleImport()">首次匯入名單</button>
+            <button class="btn-export" onclick="exportToExcel()">匯出成績</button>
+        </div>
     </div>
 
-    <input type="text" id="searchInput" placeholder="搜尋學生姓名或學號..." oninput="renderStudents()" style="width:100%; padding:10px; margin-bottom:20px; box-sizing:border-box;">
+    <div id="mainUI" style="display:none;">
+        <input type="text" id="searchInput" placeholder="🔍 快速找學生..." oninput="renderStudents()" style="width:100%; box-sizing:border-box; margin-bottom:15px;">
+        
+        <div id="studentGrid" class="student-grid"></div>
 
-    <div id="studentGrid" class="student-grid">
+        <div class="logs-section">
+            <h4>📋 最近評分紀錄</h4>
+            <ul id="logList"></ul>
         </div>
-
-    <div class="logs-section">
-        <h3>最近操作紀錄</h3>
-        <ul id="logList"></ul>
     </div>
 </div>
 
@@ -60,7 +66,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, doc, updateDoc, increment, addDoc, serverTimestamp, onSnapshot, query, where, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // 1. 請在此處替換為您的 Firebase 設定
+    // --- 請在此填入您的 Firebase 設定 ---
     const firebaseConfig = {
         apiKey: "AIzaSyCTUNT7oU2kNhqaF1qSuXjpQVrGJL3BXsc",
         authDomain: "score-a4e5b.firebaseapp.com",
@@ -68,40 +74,37 @@
         storageBucket: "score-a4e5b.firebasestorage.app",
         messagingSenderId: "158303926526",
         appId: "1:158303926526:web:2485978b314a5536210daf"
+
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-
     let allStudents = [];
+    let currentUnsubscribe = null;
 
-    // --- 功能：匯入 CSV ---
-    window.handleImport = async () => {
-        const classId = document.getElementById('classIdInput').value;
-        const fileInput = document.getElementById('csvFileInput');
-        if (!classId || !fileInput.files[0]) return alert("請填寫班級代碼並選擇檔案");
-
-        Papa.parse(fileInput.files[0], {
-            header: true,
-            complete: async (results) => {
-                const batch = writeBatch(db);
-                results.data.forEach(s => {
-                    if(!s.id) return;
-                    const ref = doc(db, "classes", classId, "students", s.id);
-                    batch.set(ref, { id: s.id, name: s.name, totalScore: 0 });
-                });
-                await batch.commit();
-                alert("匯入成功！");
-                startListening(classId); // 匯入後自動開始監聽
-            }
-        });
+    // 1. 進入班級 (不需匯入，直接讀取已有名單)
+    window.loadClass = () => {
+        const classId = document.getElementById('classIdInput').value.trim();
+        if (!classId) return alert("請輸入班級 ID");
+        
+        // 儲存到本地，下次免輸入 (選配)
+        localStorage.setItem('lastClassId', classId);
+        
+        document.getElementById('mainUI').style.display = 'block';
+        startListening(classId);
     };
 
-    // --- 功能：監聽與渲染 ---
+    // 2. 監聽學生名單
     window.startListening = (classId) => {
+        // 如果之前有監聽器，先關閉它，避免重複消耗流量
+        if (currentUnsubscribe) currentUnsubscribe();
+
         const q = collection(db, "classes", classId, "students");
-        onSnapshot(q, (snapshot) => {
-            allStudents = snapshot.docs.map(doc => doc.data());
+        currentUnsubscribe = onSnapshot(q, (snapshot) => {
+            allStudents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            if (allStudents.length === 0) {
+                alert("此班級尚無學生名單，請先執行「首次匯入」");
+            }
             renderStudents();
         });
 
@@ -111,12 +114,13 @@
             const list = document.getElementById('logList');
             list.innerHTML = snapshot.docs.map(doc => {
                 const log = doc.data();
-                const time = log.timestamp?.toDate().toLocaleTimeString() || "";
-                return `<li>${time} - ${log.studentName} <span class="${log.change > 0 ? 'log-plus' : 'log-minus'}">${log.change > 0 ? '+' : ''}${log.change}</span></li>`;
+                const time = log.timestamp?.toDate().toLocaleTimeString() || "更新中...";
+                return `<li><span>${time} - <b>${log.studentName}</b></span> <span style="color:${log.change > 0 ? 'green':'red'}">${log.change > 0 ? '+':''}${log.change}</span></li>`;
             }).join('');
         });
     };
 
+    // 3. 渲染按鈕
     window.renderStudents = () => {
         const term = document.getElementById('searchInput').value.toLowerCase();
         const grid = document.getElementById('studentGrid');
@@ -124,37 +128,67 @@
             .filter(s => s.name.includes(term) || s.id.includes(term))
             .map(s => `
                 <div class="student-card">
-                    <b>${s.id}</b><br>${s.name}<br>
-                    <span style="font-size:1.4em; color:#007bff">${s.totalScore}</span>
+                    <div style="font-size:12px; color:#888;">${s.id}</div>
+                    <div style="font-weight:bold; font-size:1.1em;">${s.name}</div>
+                    <div class="score-display">${s.totalScore}</div>
                     <div class="btn-group">
-                        <button class="btn-minus" onclick="changeScore('${s.id}', '${s.name}', -1)">-1</button>
-                        <button class="btn-plus" onclick="changeScore('${s.id}', '${s.name}', 1)">+1</button>
+                        <button class="btn-minus" onclick="changeScore('${s.id}', '${s.name}', -1)">-</button>
+                        <button class="btn-plus" onclick="changeScore('${s.id}', '${s.name}', 1)">+</button>
                     </div>
                 </div>
             `).join('');
     };
 
-    // --- 功能：加減分 ---
+    // 4. 加減分邏輯
     window.changeScore = async (sid, sname, val) => {
         const cid = document.getElementById('classIdInput').value;
         const sRef = doc(db, "classes", cid, "students", sid);
         
-        await updateDoc(sRef, { totalScore: increment(val) });
-        await addDoc(collection(db, "scoreLogs"), {
-            classId: cid, studentId: sid, studentName: sname, change: val, timestamp: serverTimestamp()
-        });
-        if (window.navigator.vibrate) window.navigator.vibrate(50); // 手機震動回饋
+        try {
+            await updateDoc(sRef, { totalScore: increment(val) });
+            await addDoc(collection(db, "scoreLogs"), {
+                classId: cid, studentId: sid, studentName: sname, change: val, timestamp: serverTimestamp()
+            });
+            if (navigator.vibrate) navigator.vibrate(40);
+        } catch (e) { alert("更新失敗，請檢查資料庫權限"); }
     };
 
-    // --- 功能：Excel 匯出 ---
+    // 5. 首次匯入 (只有第一次需要按)
+    window.handleImport = () => {
+        const classId = document.getElementById('classIdInput').value;
+        const fileInput = document.getElementById('csvFileInput');
+        if (!classId || !fileInput.files[0]) return alert("請輸入班級 ID 並選擇 CSV 檔案");
+
+        Papa.parse(fileInput.files[0], {
+            header: true,
+            complete: async (results) => {
+                const batch = writeBatch(db);
+                results.data.forEach(s => {
+                    if(!s.id || !s.name) return;
+                    const ref = doc(db, "classes", classId, "students", s.id);
+                    batch.set(ref, { id: s.id, name: s.name, totalScore: 0 });
+                });
+                await batch.commit();
+                alert("匯入成功！");
+                loadClass(); // 自動進入班級
+            }
+        });
+    };
+
+    // 6. 匯出結算
     window.exportToExcel = () => {
-        if (allStudents.length === 0) return alert("目前沒有資料可匯出");
+        if (allStudents.length === 0) return alert("沒有資料可以匯出");
         const ws = XLSX.utils.json_to_sheet(allStudents);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "成績單");
-        XLSX.writeFile(wb, `班級分數_${new Date().toLocaleDateString()}.xlsx`);
+        XLSX.writeFile(wb, `${document.getElementById('classIdInput').value}_成績.xlsx`);
+    };
+
+    // 初始載入：如果有上次紀錄的班級，自動填入
+    window.onload = () => {
+        const saved = localStorage.getItem('lastClassId');
+        if (saved) document.getElementById('classIdInput').value = saved;
     };
 </script>
-
 </body>
 </html>
