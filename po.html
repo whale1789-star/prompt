@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班級榮譽榜 - 學生查詢</title>
+    <style>
+        :root { --gold: #FFD700; --silver: #C0C0C0; --bronze: #CD7F32; --primary: #6200ee; }
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: auto; }
+        
+        /* 班級選擇區 */
+        .search-box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
+        input { width: 80%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 10px; }
+        button { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; }
+
+        /* 排行榜樣式 */
+        .rank-item { 
+            display: flex; align-items: center; background: white; 
+            margin-bottom: 10px; padding: 15px; border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: 0.3s;
+        }
+        .rank-num { width: 40px; font-size: 1.5em; font-weight: bold; color: #888; }
+        .rank-1 { color: var(--gold); transform: scale(1.1); border: 2px solid var(--gold); }
+        .rank-2 { color: var(--silver); }
+        .rank-3 { color: var(--bronze); }
+        
+        .student-info { flex: 1; margin-left: 10px; }
+        .student-name { font-size: 1.2em; font-weight: bold; }
+        .score-val { font-size: 1.5em; font-weight: bold; color: var(--primary); }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="enterClass" class="search-box">
+        <h2>🏆 進入班級榮譽榜</h2>
+        <input type="text" id="classIdInput" placeholder="請輸入班級代碼 (如: 101)">
+        <br>
+        <button onclick="viewRank()">查看排名</button>
+    </div>
+
+    <div id="rankSection" class="hidden">
+        <h2 id="classNameTitle" style="text-align: center; color: #333;"></h2>
+        <div id="rankList"></div>
+        <button onclick="location.reload()" style="width: 100%; margin-top: 20px; background: #888;">返回搜尋</button>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+   
+    const firebaseConfig = {
+        apiKey: "AIzaSyCTUNT7oU2kNhqaF1qSuXjpQVrGJL3BXsc",
+        authDomain: "score-a4e5b.firebaseapp.com",
+        projectId: "score-a4e5b",
+        storageBucket: "score-a4e5b.firebasestorage.app",
+        messagingSenderId: "158303926526",
+        appId: "1:158303926526:web:2485978b314a5536210daf"
+
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.viewRank = () => {
+        const classId = document.getElementById('classIdInput').value.trim();
+        if (!classId) return alert("請輸入班級代碼");
+
+        document.getElementById('enterClass').classList.add('hidden');
+        document.getElementById('rankSection').classList.remove('hidden');
+        document.getElementById('classNameTitle').innerText = `✨ ${classId} 榮譽榜 ✨`;
+
+        // 監聽該班級，並按分數由高到低排序
+        const q = query(collection(db, "classes", classId, "students"), orderBy("totalScore", "desc"));
+        
+        onSnapshot(q, (snapshot) => {
+            const listDiv = document.getElementById('rankList');
+            listDiv.innerHTML = "";
+            let rank = 1;
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const item = document.createElement('div');
+                item.className = `rank-item ${rank <= 3 ? 'rank-'+rank : ''}`;
+                
+                // 特殊圖示：前三名顯示獎牌
+                let rankDisplay = rank;
+                if(rank === 1) rankDisplay = "🥇";
+                if(rank === 2) rankDisplay = "🥈";
+                if(rank === 3) rankDisplay = "🥉";
+
+                item.innerHTML = `
+                    <div class="rank-num">${rankDisplay}</div>
+                    <div class="student-info">
+                        <span class="student-name">${data.name}</span>
+                    </div>
+                    <div class="score-val">${data.totalScore}</div>
+                `;
+                listDiv.appendChild(item);
+                rank++;
+            });
+
+            if (snapshot.empty) {
+                listDiv.innerHTML = "<p style='text-align:center;'>找不到該班級資料，請確認代碼是否正確。</p>";
+            }
+        });
+    };
+</script>
+</body>
+</html>
